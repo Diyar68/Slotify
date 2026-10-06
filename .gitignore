@@ -1,0 +1,308 @@
+# ============================================================
+# Slotify
+# Spring Boot / Maven + React / Vite / TypeScript
+# ============================================================
+
+
+# ------------------------------------------------------------
+# macOS
+# ------------------------------------------------------------
+
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+.Spotlight-V100
+.Trashes
+
+
+# ------------------------------------------------------------
+# Visual Studio Code
+# ------------------------------------------------------------
+
+.vscode/
+
+# If shared VS Code settings are needed later, individual
+# files can be explicitly included here.
+# Example:
+# !.vscode/settings.json
+# !.vscode/extensions.json
+
+
+# ------------------------------------------------------------
+# IntelliJ IDEA
+# ------------------------------------------------------------
+
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+
+# ------------------------------------------------------------
+# Eclipse / Spring Tool Suite
+# ------------------------------------------------------------
+
+.project
+.classpath
+.settings/
+.springBeans
+.sts4-cache/
+
+
+# ------------------------------------------------------------
+# Java
+# ------------------------------------------------------------
+
+*.class
+
+# JVM crash / diagnostic files
+hs_err_pid*
+replay_pid*
+
+
+# ------------------------------------------------------------
+# Maven
+# ------------------------------------------------------------
+
+# Maven build output
+target/
+
+# Maven Release Plugin
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Maven generated / temporary files
+dependency-reduced-pom.xml
+buildNumber.properties
+
+# Local Maven timing data
+.mvn/timing.properties
+
+
+# IMPORTANT:
+# The Maven Wrapper should be committed.
+#
+# Do NOT ignore:
+#   mvnw
+#   mvnw.cmd
+#   .mvn/wrapper/
+
+
+# ------------------------------------------------------------
+# Spring Boot - Local Configuration
+# ------------------------------------------------------------
+
+# Local machine-specific Spring configuration
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# Optional development-specific configuration containing
+# machine-specific values or secrets
+application-dev.properties
+application-dev.yml
+application-dev.yaml
+
+
+# IMPORTANT:
+# Do NOT ignore the normal application configuration:
+#
+# src/main/resources/application.properties
+# src/main/resources/application.yml
+#
+# These should normally be committed as long as they
+# do not contain passwords, tokens, or other secrets.
+
+
+# ------------------------------------------------------------
+# Environment Variables / Secrets
+# ------------------------------------------------------------
+
+.env
+.env.*
+!.env.example
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+
+# ------------------------------------------------------------
+# Logs
+# ------------------------------------------------------------
+
+*.log
+*.log.*
+
+logs/
+log/
+
+
+# ------------------------------------------------------------
+# Local Database Files
+# ------------------------------------------------------------
+
+# H2
+*.mv.db
+*.trace.db
+
+# SQLite
+*.sqlite
+*.sqlite3
+
+# Local database dumps
+*.sql.dump
+*.dump
+
+
+# IMPORTANT:
+# Normal SQL migration files should NOT be ignored.
+# For example:
+#
+# src/main/resources/db/migration/
+#
+# Flyway migrations belong in Git.
+
+
+# ------------------------------------------------------------
+# Node.js
+# ------------------------------------------------------------
+
+node_modules/
+
+# npm cache
+.npm/
+
+# pnpm
+.pnpm-store/
+
+# Yarn generated local data
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+
+# IMPORTANT:
+# Lock files should normally be committed.
+#
+# Do NOT ignore:
+#   package-lock.json
+#   yarn.lock
+#   pnpm-lock.yaml
+
+
+# ------------------------------------------------------------
+# React / Vite
+# ------------------------------------------------------------
+
+# Production build output
+dist/
+
+# Vite cache
+.vite/
+
+
+# ------------------------------------------------------------
+# Frontend Environment Files
+# ------------------------------------------------------------
+
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+
+# ------------------------------------------------------------
+# Node / Package Manager Logs
+# ------------------------------------------------------------
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# ------------------------------------------------------------
+# TypeScript
+# ------------------------------------------------------------
+
+*.tsbuildinfo
+
+
+# ------------------------------------------------------------
+# Test Coverage
+# ------------------------------------------------------------
+
+coverage/
+.nyc_output/
+
+
+# ------------------------------------------------------------
+# Tool / Linter Caches
+# ------------------------------------------------------------
+
+.eslintcache
+.stylelintcache
+.cache/
+
+
+# ------------------------------------------------------------
+# Temporary / Editor Files
+# ------------------------------------------------------------
+
+*.tmp
+*.temp
+
+*.swp
+*.swo
+
+*~
+~*
+
+tmp/
+temp/
+
+
+# ------------------------------------------------------------
+# Windows
+# ------------------------------------------------------------
+
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+
+# ------------------------------------------------------------
+# Docker - Local Overrides
+# ------------------------------------------------------------
+
+docker-compose.override.yml
+compose.override.yml
+
+
+# ------------------------------------------------------------
+# Local Runtime Data
+# ------------------------------------------------------------
+
+uploads/
+storage/
+
+
+# ------------------------------------------------------------
+# Backup / Merge Files
+# ------------------------------------------------------------
+
+*.bak
+*.orig
