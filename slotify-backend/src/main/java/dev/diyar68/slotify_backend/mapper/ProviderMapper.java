@@ -2,7 +2,7 @@ package dev.diyar68.slotify_backend.mapper;
 
 import org.springframework.stereotype.Component;
 
-import dev.diyar68.slotify_backend.dto.request.RegisterRequest;
+//import dev.diyar68.slotify_backend.dto.request.RegisterRequest;
 import dev.diyar68.slotify_backend.dto.response.ProviderResponse;
 import dev.diyar68.slotify_backend.entity.Provider;
 
