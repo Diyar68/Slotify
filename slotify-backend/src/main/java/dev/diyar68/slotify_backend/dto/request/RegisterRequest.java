@@ -6,8 +6,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
-                @NotBlank @Size(max = 100) String name,
-                @NotBlank @Email @Size(max = 150) String email,
-                @NotBlank @Size(min = 8, max = 150) String password,
-                @Size(min = 3, max = 100) @Pattern(regexp = "^$|^[a-z0-9]+(?:-[a-z0-9]+)*$", message = "Slug may only contain lowercase letters, numbers and single hyphens") String bookingSlug) {
+        @NotBlank @Size(max = 100) String name,
+        @NotBlank @Email @Size(max = 150) String email,
+        @NotBlank @Size(min = 8, max = 150) String password,
+        @Size(max = 100) @Pattern(regexp = "^$|^[a-z0-9]+(?:-[a-z0-9]+)*$", message = "Slug may only contain lowercase letters, numbers and single hyphens") String bookingSlug) {
 }

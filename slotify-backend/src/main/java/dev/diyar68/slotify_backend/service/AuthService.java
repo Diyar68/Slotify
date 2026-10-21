@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import dev.diyar68.slotify_backend.dto.request.RegisterRequest;
 import dev.diyar68.slotify_backend.dto.response.ProviderResponse;
 import dev.diyar68.slotify_backend.entity.Provider;
+import dev.diyar68.slotify_backend.exception.ConflictException;
 import dev.diyar68.slotify_backend.mapper.ProviderMapper;
 import dev.diyar68.slotify_backend.repository.ProviderRepository;
 
@@ -29,7 +30,7 @@ public class AuthService {
     @Transactional
     public ProviderResponse register(RegisterRequest request) {
         if (providerRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("Email already exists");
+            throw new ConflictException("Email already exists");
         }
 
         String passwordHash = passwordEncoder.encode(request.password());
@@ -50,12 +51,12 @@ public class AuthService {
             } while (slugExists && attempts < maxAttempts);
 
             if (slugExists) {
-                throw new IllegalStateException("Could not generate a unique booking slug");
+                throw new ConflictException("Could not generate a unique booking slug");
             }
 
         } else {
             if (providerRepository.existsByBookingSlug(finalBookingSlug)) {
-                throw new IllegalArgumentException("This Slug already exists, take another one!");
+                throw new ConflictException("This Slug already exists, take another one!");
             }
         }
 
