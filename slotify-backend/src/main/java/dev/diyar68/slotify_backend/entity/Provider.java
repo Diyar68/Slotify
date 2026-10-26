@@ -1,6 +1,7 @@
 package dev.diyar68.slotify_backend.entity;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -46,7 +47,7 @@ public class Provider {
 
     public Provider(String name, String email, String passwordHash, String bookingSlug) {
         this.name = name;
-        this.email = email;
+        this.email = normalizeEmail(email);
         this.passwordHash = passwordHash;
         this.bookingSlug = bookingSlug;
     }
@@ -68,7 +69,11 @@ public class Provider {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = normalizeEmail(email);
+    }
+
+    public static String normalizeEmail(String email) {
+        return email == null ? null : email.strip().toLowerCase(Locale.ROOT);
     }
 
     public String getPasswordHash() {
