@@ -1,12 +1,20 @@
 package dev.diyar68.slotify_backend.service;
 
 import java.security.SecureRandom;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.List;
+
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import dev.diyar68.slotify_backend.dto.request.LoginRequest;
 import dev.diyar68.slotify_backend.dto.request.RegisterRequest;
 import dev.diyar68.slotify_backend.dto.response.ProviderResponse;
 import dev.diyar68.slotify_backend.entity.Provider;
@@ -19,12 +27,14 @@ public class AuthService {
     private final ProviderRepository providerRepository;
     private final ProviderMapper providerMapper;
     private final PasswordEncoder passwordEncoder;
+    private final String dummyPasswordHash;
 
     public AuthService(ProviderRepository providerRepository, ProviderMapper providerMapper,
             PasswordEncoder passwordEncoder) {
         this.providerRepository = providerRepository;
         this.providerMapper = providerMapper;
         this.passwordEncoder = passwordEncoder;
+        this.dummyPasswordHash = passwordEncoder.encode("unused-login-password");
     }
 
     @Transactional
@@ -99,6 +109,26 @@ public class AuthService {
         }
 
         return baseSlug + "-" + suffix;
+    }
+
+    @Transactional(readOnly = true)
+    public Authentication login(LoginRequest request) {
+        Provider provider = providerRepository.findByEmail(request.email()).orElse(null);
+        String hash = provider == null ? dummyPasswordHash : provider.getPasswordHash();
+        boolean passwordMatches = passwordEncoder.matches(request.password(), hash);
+        if (provider == null || !passwordMatches || request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+
+        return UsernamePasswordAuthenticationToken.authenticated(provider.getEmail(), null,
+                List.of(new SimpleGrantedAuthority("ROLE_PROVIDER")));
+    }
+
+    @Transactional(readOnly = true)
+    public ProviderResponse currentProvider(String email) {
+        Provider provider = providerRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+        return providerMapper.toResponseDto(provider);
     }
 
 }

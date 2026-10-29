@@ -143,7 +143,7 @@ class RegistrationTests {
 
     @Test
     void keepsOtherEndpointsProtected() throws Exception {
-        mvc.perform(get("/api/providers")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/providers")).andExpect(status().isUnauthorized());
         verifyNoInteractions(repository);
     }
 
