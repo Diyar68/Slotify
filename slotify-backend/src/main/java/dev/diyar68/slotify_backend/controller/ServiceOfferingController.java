@@ -1,8 +1,11 @@
 package dev.diyar68.slotify_backend.controller;
 
+import dev.diyar68.slotify_backend.dto.request.ServiceOfferingRequest;
+import dev.diyar68.slotify_backend.dto.response.ServiceOfferingResponse;
+import dev.diyar68.slotify_backend.service.ServiceOfferingService;
+import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,14 +17,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import dev.diyar68.slotify_backend.dto.request.ServiceOfferingRequest;
-import dev.diyar68.slotify_backend.dto.response.ServiceOfferingResponse;
-import dev.diyar68.slotify_backend.service.ServiceOfferingService;
-import jakarta.validation.Valid;
-
 @RestController
 @RequestMapping("/api/services")
 public class ServiceOfferingController {
+
     private final ServiceOfferingService services;
 
     public ServiceOfferingController(ServiceOfferingService services) {
@@ -30,7 +29,10 @@ public class ServiceOfferingController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ServiceOfferingResponse create(Principal principal, @Valid @RequestBody ServiceOfferingRequest request) {
+    public ServiceOfferingResponse create(
+        Principal principal,
+        @Valid @RequestBody ServiceOfferingRequest request
+    ) {
         return services.create(principal.getName(), request);
     }
 
@@ -40,8 +42,11 @@ public class ServiceOfferingController {
     }
 
     @PutMapping("/{id}")
-    public ServiceOfferingResponse update(Principal principal, @PathVariable Long id,
-            @Valid @RequestBody ServiceOfferingRequest request) {
+    public ServiceOfferingResponse update(
+        Principal principal,
+        @PathVariable Long id,
+        @Valid @RequestBody ServiceOfferingRequest request
+    ) {
         return services.update(principal.getName(), id, request);
     }
 

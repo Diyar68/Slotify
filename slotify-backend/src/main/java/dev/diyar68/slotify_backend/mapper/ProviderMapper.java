@@ -1,10 +1,9 @@
 package dev.diyar68.slotify_backend.mapper;
 
-import org.springframework.stereotype.Component;
-
 //import dev.diyar68.slotify_backend.dto.request.RegisterRequest;
 import dev.diyar68.slotify_backend.dto.response.ProviderResponse;
 import dev.diyar68.slotify_backend.entity.Provider;
+import org.springframework.stereotype.Component;
 
 @Component
 public class ProviderMapper {
@@ -14,10 +13,7 @@ public class ProviderMapper {
             return null;
         }
 
-        return new ProviderResponse(
-                entity.getName(),
-                entity.getEmail(),
-                entity.getBookingSlug());
+        return new ProviderResponse(entity.getName(), entity.getEmail(), entity.getBookingSlug());
     }
 
     /*
@@ -26,7 +22,7 @@ public class ProviderMapper {
      * if (request == null) {
      * return null;
      * }
-     * 
+     *
      * return new Provider(
      * request.name(),
      * request.email(),

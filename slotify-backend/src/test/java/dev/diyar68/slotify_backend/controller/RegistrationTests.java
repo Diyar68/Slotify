@@ -11,10 +11,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diyar68.slotify_backend.config.SecurityConfig;
+import dev.diyar68.slotify_backend.entity.Provider;
+import dev.diyar68.slotify_backend.entity.RegistrationToken;
+import dev.diyar68.slotify_backend.exception.GlobalExceptionHandler;
+import dev.diyar68.slotify_backend.mapper.ProviderMapper;
+import dev.diyar68.slotify_backend.repository.ProviderRepository;
+import dev.diyar68.slotify_backend.service.AuthService;
+import dev.diyar68.slotify_backend.service.RegistrationService;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Stream;
-
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -27,38 +36,64 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import dev.diyar68.slotify_backend.config.SecurityConfig;
-import dev.diyar68.slotify_backend.entity.Provider;
-import dev.diyar68.slotify_backend.exception.GlobalExceptionHandler;
-import dev.diyar68.slotify_backend.mapper.ProviderMapper;
-import dev.diyar68.slotify_backend.repository.ProviderRepository;
-import dev.diyar68.slotify_backend.service.AuthService;
 import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest(AuthController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class, AuthService.class, ProviderMapper.class})
+@Import({
+    SecurityConfig.class,
+    GlobalExceptionHandler.class,
+    AuthService.class,
+    ProviderMapper.class,
+})
 class RegistrationTests {
+
+    @MockitoBean
+    RegistrationService registration;
+
+    private static final String TOKEN = "a".repeat(43);
+
+    @BeforeEach
+    void registrationToken() {
+        when(registration.lockValidToken(TOKEN)).thenReturn(
+            new RegistrationToken("devo@example.com", "hash", Instant.now().plusSeconds(1800))
+        );
+    }
+
     private static final String PASSWORD = "MeinPasswort123!";
 
-    @Autowired MockMvc mvc;
-    @Autowired ObjectMapper objectMapper;
-    @Autowired PasswordEncoder passwordEncoder;
-    @MockitoBean ProviderRepository repository;
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    ObjectMapper objectMapper;
+
+    @Autowired
+    PasswordEncoder passwordEncoder;
+
+    @MockitoBean
+    ProviderRepository repository;
 
     @Test
     void registersAnonymouslyWithCustomSlugAndHashesPassword() throws Exception {
-        when(repository.save(any(Provider.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(repository.save(any(Provider.class))).thenAnswer(invocation ->
+            invocation.getArgument(0)
+        );
 
-        String body = mvc.perform(post("/api/auth/register").contentType("application/json")
-                .content(objectMapper.writeValueAsString(validRequest())))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("name").value("Barber Devo"))
-                .andExpect(jsonPath("email").value("devo@example.com"))
-                .andExpect(jsonPath("bookingSlug").value("barber-devo"))
-                .andExpect(jsonPath("password").doesNotExist())
-                .andExpect(jsonPath("passwordHash").doesNotExist())
-                .andReturn().getResponse().getContentAsString();
+        String body = mvc
+            .perform(
+                post("/api/auth/register")
+                    .contentType("application/json")
+                    .content(objectMapper.writeValueAsString(validRequest()))
+            )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("name").value("Barber Devo"))
+            .andExpect(jsonPath("email").value("devo@example.com"))
+            .andExpect(jsonPath("bookingSlug").value("barber-devo"))
+            .andExpect(jsonPath("password").doesNotExist())
+            .andExpect(jsonPath("passwordHash").doesNotExist())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
 
         ArgumentCaptor<Provider> saved = ArgumentCaptor.forClass(Provider.class);
         verify(repository).save(saved.capture());
@@ -71,7 +106,7 @@ class RegistrationTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"missing", "null", "empty"})
+    @ValueSource(strings = { "missing", "null", "empty" })
     void generatesSlugWhenNoCustomSlugIsProvided(String variant) throws Exception {
         Map<String, Object> request = validRequest();
         if (variant.equals("missing")) {
@@ -79,14 +114,22 @@ class RegistrationTests {
         } else {
             request.put("bookingSlug", variant.equals("null") ? null : "");
         }
-        when(repository.save(any(Provider.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(repository.save(any(Provider.class))).thenAnswer(invocation ->
+            invocation.getArgument(0)
+        );
 
-        String body = mvc.perform(post("/api/auth/register").contentType("application/json")
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("password").doesNotExist())
-                .andExpect(jsonPath("passwordHash").doesNotExist())
-                .andReturn().getResponse().getContentAsString();
+        String body = mvc
+            .perform(
+                post("/api/auth/register")
+                    .contentType("application/json")
+                    .content(objectMapper.writeValueAsString(request))
+            )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("password").doesNotExist())
+            .andExpect(jsonPath("passwordHash").doesNotExist())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
 
         ArgumentCaptor<Provider> saved = ArgumentCaptor.forClass(Provider.class);
         verify(repository).save(saved.capture());
@@ -101,54 +144,75 @@ class RegistrationTests {
     void rejectsDuplicateCustomSlugWithoutSaving() throws Exception {
         when(repository.existsByBookingSlug("barber-devo")).thenReturn(true);
 
-        mvc.perform(post("/api/auth/register").contentType("application/json")
-                .content(objectMapper.writeValueAsString(validRequest())))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("status").value(409))
-                .andExpect(jsonPath("message").value("This Slug already exists, take another one!"));
+        mvc.perform(
+            post("/api/auth/register")
+                .contentType("application/json")
+                .content(objectMapper.writeValueAsString(validRequest()))
+        )
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("status").value(409))
+            .andExpect(jsonPath("message").value("This Slug already exists, take another one!"));
 
         verify(repository, never()).save(any(Provider.class));
     }
 
     static Stream<Arguments> invalidFields() {
         return Stream.of(
-                Arguments.of("name", null),
-                Arguments.of("name", "   "),
-                Arguments.of("name", "a".repeat(101)),
-                Arguments.of("email", null),
-                Arguments.of("email", "not-an-email"),
-                Arguments.of("bookingSlug", "Devran"),
-                Arguments.of("bookingSlug", "dev--ran"),
-                Arguments.of("bookingSlug", "-devran"),
-                Arguments.of("bookingSlug", "devran-"),
-                Arguments.of("bookingSlug", "a".repeat(101)));
+            Arguments.of("name", null),
+            Arguments.of("name", "   "),
+            Arguments.of("name", "a".repeat(101)),
+            Arguments.of("token", null),
+            Arguments.of("token", "invalid"),
+            Arguments.of("bookingSlug", "Devran"),
+            Arguments.of("bookingSlug", "dev--ran"),
+            Arguments.of("bookingSlug", "-devran"),
+            Arguments.of("bookingSlug", "devran-"),
+            Arguments.of("bookingSlug", "a".repeat(101))
+        );
     }
 
     @ParameterizedTest
     @MethodSource("invalidFields")
-    void rejectsInvalidFieldsBeforeCallingServiceRepository(String field, String value) throws Exception {
+    void rejectsInvalidFieldsBeforeCallingServiceRepository(String field, String value)
+        throws Exception {
         Map<String, Object> request = validRequest();
         request.put(field, value);
 
-        String body = mvc.perform(post("/api/auth/register").contentType("application/json")
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("status").value(400))
-                .andExpect(jsonPath("message").isString())
-                .andReturn().getResponse().getContentAsString();
+        String body = mvc
+            .perform(
+                post("/api/auth/register")
+                    .contentType("application/json")
+                    .content(objectMapper.writeValueAsString(request))
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("status").value(400))
+            .andExpect(jsonPath("message").isString())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
 
         assertThat(body).doesNotContain(PASSWORD);
         verifyNoInteractions(repository);
     }
 
     @Test
-    void keepsOtherEndpointsProtected() throws Exception {
-        mvc.perform(get("/api/providers")).andExpect(status().isUnauthorized());
+    void unknownEndpointReturnsNotFound() throws Exception {
+        mvc.perform(get("/api/providers")).andExpect(status().isNotFound());
         verifyNoInteractions(repository);
     }
 
     private Map<String, Object> validRequest() {
-        return new LinkedHashMap<>(Map.of("name", "Barber Devo", "email", "devo@example.com",
-                "password", PASSWORD, "bookingSlug", "barber-devo"));
+        return new LinkedHashMap<>(
+            Map.of(
+                "name",
+                "Barber Devo",
+                "token",
+                TOKEN,
+                "password",
+                PASSWORD,
+                "bookingSlug",
+                "barber-devo"
+            )
+        );
     }
 }

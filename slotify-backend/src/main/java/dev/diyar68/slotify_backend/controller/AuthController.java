@@ -1,7 +1,17 @@
 package dev.diyar68.slotify_backend.controller;
 
+import dev.diyar68.slotify_backend.dto.request.LoginRequest;
+import dev.diyar68.slotify_backend.dto.request.RegisterRequest;
+import dev.diyar68.slotify_backend.dto.request.RegistrationLinkRequest;
+import dev.diyar68.slotify_backend.dto.response.ProviderResponse;
+import dev.diyar68.slotify_backend.service.AuthService;
+import dev.diyar68.slotify_backend.service.RegistrationService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import java.security.Principal;
-
+import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -9,40 +19,56 @@ import org.springframework.security.web.authentication.session.SessionAuthentica
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
-
-import dev.diyar68.slotify_backend.dto.request.LoginRequest;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
-
-import dev.diyar68.slotify_backend.dto.request.RegisterRequest;
-import dev.diyar68.slotify_backend.dto.response.ProviderResponse;
-import dev.diyar68.slotify_backend.service.AuthService;
-import jakarta.validation.Valid;
-
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("api/auth/")
 public class AuthController {
+
     private final AuthService authService;
     private final HttpSessionSecurityContextRepository contexts;
     private final SessionAuthenticationStrategy sessions;
+    private final RegistrationService registration;
 
-    public AuthController(AuthService authService, HttpSessionSecurityContextRepository contexts,
-            SessionAuthenticationStrategy sessions) {
+    public AuthController(
+        AuthService authService,
+        HttpSessionSecurityContextRepository contexts,
+        SessionAuthenticationStrategy sessions,
+        RegistrationService registration
+    ) {
         this.authService = authService;
         this.contexts = contexts;
         this.sessions = sessions;
+        this.registration = registration;
+    }
+
+    @GetMapping("config")
+    public Map<String, Boolean> configuration() {
+        return Map.of("registrationEnabled", registration.isRegistrationEnabled());
+    }
+
+    @PostMapping("registration-link")
+    public Map<String, String> registrationLink(
+        @Valid @RequestBody RegistrationLinkRequest request
+    ) {
+        registration.requestLink(request.email());
+        return Map.of("message", RegistrationService.LINK_MESSAGE);
+    }
+
+    @GetMapping("registration-token/validate")
+    public Map<String, String> validateRegistrationToken(@RequestParam String token) {
+        return Map.of("email", registration.validate(token));
     }
 
     @PostMapping("register")
     @ResponseStatus(HttpStatus.CREATED)
     public ProviderResponse registerProvider(@Valid @RequestBody RegisterRequest request) {
+        registration.requireRegistrationEnabled();
         return authService.register(request);
     }
 
@@ -52,8 +78,11 @@ public class AuthController {
     }
 
     @PostMapping("login")
-    public ProviderResponse login(@Valid @RequestBody LoginRequest login,
-            HttpServletRequest request, HttpServletResponse response) {
+    public ProviderResponse login(
+        @Valid @RequestBody LoginRequest login,
+        HttpServletRequest request,
+        HttpServletResponse response
+    ) {
         Authentication authentication = authService.login(login);
         ProviderResponse provider = authService.currentProvider(authentication.getName());
         sessions.onAuthentication(authentication, request, response);
@@ -68,5 +97,4 @@ public class AuthController {
     public ProviderResponse me(Principal principal) {
         return authService.currentProvider(principal.getName());
     }
-
 }

@@ -6,6 +6,6 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record ServiceOfferingRequest(
-        @NotBlank @Size(max = 100) String name,
-        @NotNull @Positive Integer duration) {
-}
+    @NotBlank @Size(max = 100) String name,
+    @NotNull @Positive Integer duration
+) {}

@@ -1,19 +1,5 @@
 package dev.diyar68.slotify_backend.service;
 
-import java.security.SecureRandom;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
-import java.util.List;
-
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import dev.diyar68.slotify_backend.dto.request.LoginRequest;
 import dev.diyar68.slotify_backend.dto.request.RegisterRequest;
 import dev.diyar68.slotify_backend.dto.response.ProviderResponse;
@@ -21,25 +7,45 @@ import dev.diyar68.slotify_backend.entity.Provider;
 import dev.diyar68.slotify_backend.exception.ConflictException;
 import dev.diyar68.slotify_backend.mapper.ProviderMapper;
 import dev.diyar68.slotify_backend.repository.ProviderRepository;
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.util.List;
+import java.util.Locale;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
+
     private final ProviderRepository providerRepository;
     private final ProviderMapper providerMapper;
     private final PasswordEncoder passwordEncoder;
     private final String dummyPasswordHash;
+    private final RegistrationService registration;
 
-    public AuthService(ProviderRepository providerRepository, ProviderMapper providerMapper,
-            PasswordEncoder passwordEncoder) {
+    public AuthService(
+        ProviderRepository providerRepository,
+        ProviderMapper providerMapper,
+        PasswordEncoder passwordEncoder,
+        RegistrationService registration
+    ) {
         this.providerRepository = providerRepository;
         this.providerMapper = providerMapper;
         this.passwordEncoder = passwordEncoder;
         this.dummyPasswordHash = passwordEncoder.encode("unused-login-password");
+        this.registration = registration;
     }
 
     @Transactional
     public ProviderResponse register(RegisterRequest request) {
-        if (providerRepository.existsByEmail(request.email())) {
+        var token = registration.lockValidToken(request.token());
+        String email = token.getEmail();
+        if (providerRepository.existsByEmail(email)) {
             throw new ConflictException("Email already exists");
         }
 
@@ -48,7 +54,6 @@ public class AuthService {
         String finalBookingSlug = request.bookingSlug();
 
         if (finalBookingSlug == null || finalBookingSlug.isEmpty()) {
-
             int maxAttempts = 10;
             int attempts = 0;
             boolean slugExists;
@@ -57,22 +62,26 @@ public class AuthService {
                 finalBookingSlug = generateSlug(request.name());
                 attempts++;
                 slugExists = providerRepository.existsByBookingSlug(finalBookingSlug);
-
             } while (slugExists && attempts < maxAttempts);
 
             if (slugExists) {
                 throw new ConflictException("Could not generate a unique booking slug");
             }
-
         } else {
             if (providerRepository.existsByBookingSlug(finalBookingSlug)) {
                 throw new ConflictException("This Slug already exists, take another one!");
             }
         }
 
-        Provider providerEntity = new Provider(request.name(), request.email(), passwordHash, finalBookingSlug);
+        Provider providerEntity = new Provider(
+            request.name(),
+            email,
+            passwordHash,
+            finalBookingSlug
+        );
 
         Provider savedEntity = providerRepository.save(providerEntity);
+        registration.markUsed(token);
 
         return providerMapper.toResponseDto(savedEntity);
     }
@@ -82,13 +91,14 @@ public class AuthService {
             name = "user";
         }
 
-        String baseSlug = name.toLowerCase(Locale.ROOT)
-                .replace("ä", "ae")
-                .replace("ö", "oe")
-                .replace("ü", "ue")
-                .replace("ß", "ss")
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("^-|-$", "");
+        String baseSlug = name
+            .toLowerCase(Locale.ROOT)
+            .replace("ä", "ae")
+            .replace("ö", "oe")
+            .replace("ü", "ue")
+            .replace("ß", "ss")
+            .replaceAll("[^a-z0-9]+", "-")
+            .replaceAll("^-|-$", "");
 
         if (baseSlug.isBlank()) {
             baseSlug = "user";
@@ -116,19 +126,26 @@ public class AuthService {
         Provider provider = providerRepository.findByEmail(request.email()).orElse(null);
         String hash = provider == null ? dummyPasswordHash : provider.getPasswordHash();
         boolean passwordMatches = passwordEncoder.matches(request.password(), hash);
-        if (provider == null || !passwordMatches || request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
+        if (
+            provider == null ||
+            !passwordMatches ||
+            request.password().getBytes(StandardCharsets.UTF_8).length > 72
+        ) {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        return UsernamePasswordAuthenticationToken.authenticated(provider.getEmail(), null,
-                List.of(new SimpleGrantedAuthority("ROLE_PROVIDER")));
+        return UsernamePasswordAuthenticationToken.authenticated(
+            provider.getEmail(),
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_PROVIDER"))
+        );
     }
 
     @Transactional(readOnly = true)
     public ProviderResponse currentProvider(String email) {
-        Provider provider = providerRepository.findByEmail(email)
-                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+        Provider provider = providerRepository
+            .findByEmail(email)
+            .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
         return providerMapper.toResponseDto(provider);
     }
-
 }

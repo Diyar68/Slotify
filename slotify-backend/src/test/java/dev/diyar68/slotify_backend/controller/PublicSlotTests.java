@@ -5,11 +5,21 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import dev.diyar68.slotify_backend.config.SecurityConfig;
+import dev.diyar68.slotify_backend.entity.Availability;
+import dev.diyar68.slotify_backend.entity.Provider;
+import dev.diyar68.slotify_backend.entity.ServiceOffering;
+import dev.diyar68.slotify_backend.exception.GlobalExceptionHandler;
+import dev.diyar68.slotify_backend.repository.AppointmentRepository;
+import dev.diyar68.slotify_backend.repository.AvailabilityRepository;
+import dev.diyar68.slotify_backend.repository.ProviderRepository;
+import dev.diyar68.slotify_backend.repository.ServiceOfferingRepository;
+import dev.diyar68.slotify_backend.service.ServiceOfferingService;
+import dev.diyar68.slotify_backend.service.SlotCalculator;
 import java.time.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,30 +29,40 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import dev.diyar68.slotify_backend.config.SecurityConfig;
-import dev.diyar68.slotify_backend.entity.Availability;
-import dev.diyar68.slotify_backend.entity.Provider;
-import dev.diyar68.slotify_backend.entity.ServiceOffering;
-import dev.diyar68.slotify_backend.exception.GlobalExceptionHandler;
-import dev.diyar68.slotify_backend.repository.AvailabilityRepository;
-import dev.diyar68.slotify_backend.repository.AppointmentRepository;
-import dev.diyar68.slotify_backend.repository.ProviderRepository;
-import dev.diyar68.slotify_backend.repository.ServiceOfferingRepository;
-import dev.diyar68.slotify_backend.service.SlotCalculator;
 import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest(PublicSlotController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class, SlotCalculator.class})
+@Import({
+    SecurityConfig.class,
+    GlobalExceptionHandler.class,
+    SlotCalculator.class,
+    ServiceOfferingService.class,
+})
 class PublicSlotTests {
+
     private static final LocalDate DATE = LocalDate.of(2030, 1, 11);
-    @Autowired MockMvc mvc;
-    @Autowired ObjectMapper objectMapper;
-    @MockitoBean ProviderRepository providers;
-    @MockitoBean ServiceOfferingRepository services;
-    @MockitoBean AvailabilityRepository availabilities;
-    @MockitoBean Clock clock;
-    @MockitoBean AppointmentRepository appointments;
+
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    ObjectMapper objectMapper;
+
+    @MockitoBean
+    ProviderRepository providers;
+
+    @MockitoBean
+    ServiceOfferingRepository services;
+
+    @MockitoBean
+    AvailabilityRepository availabilities;
+
+    @MockitoBean
+    Clock clock;
+
+    @MockitoBean
+    AppointmentRepository appointments;
+
     private Provider provider;
     private ServiceOffering service;
 
@@ -58,56 +78,100 @@ class PublicSlotTests {
     }
 
     @Test
+    void publiclyListsProviderNameAndServicesWithoutPrivateData() throws Exception {
+        when(services.findAllByProvider(provider)).thenReturn(List.of(service));
+        String body = mvc
+            .perform(get("/api/public/barber-devo"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("name").value("Barber Devo"))
+            .andExpect(jsonPath("services.length()").value(1))
+            .andExpect(jsonPath("services[0].name").value("Haarschnitt"))
+            .andExpect(jsonPath("services[0].duration").value(30))
+            .andExpect(jsonPath("email").doesNotExist())
+            .andExpect(jsonPath("passwordHash").doesNotExist())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        assertThat(body).doesNotContain("devo@example.com", "private-hash");
+        verify(services).findAllByProvider(provider);
+    }
+
+    @Test
+    void unknownPublicProviderReturns404() throws Exception {
+        mvc.perform(get("/api/public/unknown"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("status").value(404));
+        verifyNoInteractions(services, availabilities, appointments);
+    }
+
+    @Test
+    void publicProviderMayHaveNoServices() throws Exception {
+        mvc.perform(get("/api/public/barber-devo"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("services").isEmpty());
+    }
+
+    @Test
     void anonymouslyReturnsThirtyMinuteSlots() throws Exception {
-        when(availabilities.findAllByProviderAndDate(provider, DATE))
-                .thenReturn(List.of(window(DATE, "09:00", "12:00")));
+        when(availabilities.findAllByProviderAndDate(provider, DATE)).thenReturn(
+            List.of(window(DATE, "09:00", "12:00"))
+        );
         assertSlots(DATE, "09:00", "09:30", "10:00", "10:30", "11:00", "11:30");
     }
 
     @Test
     void returnsFortyFiveMinuteSlots() throws Exception {
         service.setDuration(45);
-        when(availabilities.findAllByProviderAndDate(provider, DATE))
-                .thenReturn(List.of(window(DATE, "09:00", "12:00")));
+        when(availabilities.findAllByProviderAndDate(provider, DATE)).thenReturn(
+            List.of(window(DATE, "09:00", "12:00"))
+        );
         assertSlots(DATE, "09:00", "09:45", "10:30", "11:15");
     }
 
     @Test
     void sortsAndDeduplicatesMultipleWindows() throws Exception {
-        when(availabilities.findAllByProviderAndDate(provider, DATE)).thenReturn(List.of(
-                window(DATE, "12:00", "13:00"), window(DATE, "09:00", "10:00"),
-                window(DATE, "09:00", "10:00")));
+        when(availabilities.findAllByProviderAndDate(provider, DATE)).thenReturn(
+            List.of(
+                window(DATE, "12:00", "13:00"),
+                window(DATE, "09:00", "10:00"),
+                window(DATE, "09:00", "10:00")
+            )
+        );
         assertSlots(DATE, "09:00", "09:30", "12:00", "12:30");
     }
 
     @Test
     void doesNotCombineAdjacentWindowsThatAreIndividuallyTooShort() throws Exception {
         service.setDuration(45);
-        when(availabilities.findAllByProviderAndDate(provider, DATE)).thenReturn(List.of(
-                window(DATE, "09:00", "09:30"), window(DATE, "09:30", "10:00")));
+        when(availabilities.findAllByProviderAndDate(provider, DATE)).thenReturn(
+            List.of(window(DATE, "09:00", "09:30"), window(DATE, "09:30", "10:00"))
+        );
         assertSlots(DATE);
     }
 
     @Test
     void neverWrapsPastMidnight() throws Exception {
-        when(availabilities.findAllByProviderAndDate(provider, DATE))
-                .thenReturn(List.of(window(DATE, "23:00", "23:59")));
+        when(availabilities.findAllByProviderAndDate(provider, DATE)).thenReturn(
+            List.of(window(DATE, "23:00", "23:59"))
+        );
         assertSlots(DATE, "23:00");
     }
 
     @Test
     void handlesVeryLongServiceWithoutOverflowOrLooping() throws Exception {
         service.setDuration(Integer.MAX_VALUE);
-        when(availabilities.findAllByProviderAndDate(provider, DATE))
-                .thenReturn(List.of(window(DATE, "09:00", "12:00")));
+        when(availabilities.findAllByProviderAndDate(provider, DATE)).thenReturn(
+            List.of(window(DATE, "09:00", "12:00"))
+        );
         assertSlots(DATE);
     }
 
     @Test
     void removesPastStartsWithoutShiftingTheGrid() throws Exception {
         LocalDate today = LocalDate.of(2030, 1, 10);
-        when(availabilities.findAllByProviderAndDate(provider, today))
-                .thenReturn(List.of(window(today, "09:00", "11:00")));
+        when(availabilities.findAllByProviderAndDate(provider, today)).thenReturn(
+            List.of(window(today, "09:00", "11:00"))
+        );
         assertSlots(today, "09:30", "10:00", "10:30");
     }
 
@@ -115,8 +179,9 @@ class PublicSlotTests {
     void excludesStartExactlyNow() throws Exception {
         when(clock.instant()).thenReturn(Instant.parse("2030-01-10T08:00:00Z"));
         LocalDate today = LocalDate.of(2030, 1, 10);
-        when(availabilities.findAllByProviderAndDate(provider, today))
-                .thenReturn(List.of(window(today, "09:00", "09:30")));
+        when(availabilities.findAllByProviderAndDate(provider, today)).thenReturn(
+            List.of(window(today, "09:00", "09:30"))
+        );
         assertSlots(today);
     }
 
@@ -133,47 +198,76 @@ class PublicSlotTests {
 
     @Test
     void returnsNotFoundForUnknownSlug() throws Exception {
-        mvc.perform(get("/api/public/unknown/slots").param("serviceId", "1").param("date", DATE.toString()))
-                .andExpect(status().isNotFound()).andExpect(jsonPath("status").value(404));
+        mvc.perform(
+            get("/api/public/unknown/slots").param("serviceId", "1").param("date", DATE.toString())
+        )
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("status").value(404));
         verifyNoInteractions(services, availabilities);
     }
 
     @ParameterizedTest
-    @ValueSource(longs = {2, 999})
+    @ValueSource(longs = { 2, 999 })
     void returnsNotFoundForForeignOrMissingService(long id) throws Exception {
         Provider other = new Provider("Other", "other@example.com", "hash", "other");
-        when(services.findByIdAndProvider(2L, other))
-                .thenReturn(Optional.of(new ServiceOffering(other, "Other service", 30)));
-        mvc.perform(get("/api/public/barber-devo/slots").param("serviceId", Long.toString(id))
-                .param("date", DATE.toString()))
-                .andExpect(status().isNotFound()).andExpect(jsonPath("status").value(404));
+        when(services.findByIdAndProvider(2L, other)).thenReturn(
+            Optional.of(new ServiceOffering(other, "Other service", 30))
+        );
+        mvc.perform(
+            get("/api/public/barber-devo/slots")
+                .param("serviceId", Long.toString(id))
+                .param("date", DATE.toString())
+        )
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("status").value(404));
         verify(services).findByIdAndProvider(id, provider);
         verifyNoInteractions(availabilities);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "?serviceId=1", "?date=2030-01-11", "?serviceId=abc&date=2030-01-11",
-            "?serviceId=1&date=invalid", "?serviceId=1&date=2030-02-30",
-            "?serviceId=0&date=2030-01-11", "?serviceId=-1&date=2030-01-11"})
+    @ValueSource(
+        strings = {
+            "",
+            "?serviceId=1",
+            "?date=2030-01-11",
+            "?serviceId=abc&date=2030-01-11",
+            "?serviceId=1&date=invalid",
+            "?serviceId=1&date=2030-02-30",
+            "?serviceId=0&date=2030-01-11",
+            "?serviceId=-1&date=2030-01-11",
+        }
+    )
     void rejectsMissingOrInvalidParameters(String query) throws Exception {
-        mvc.perform(get("/api/public/barber-devo/slots" + query)).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/public/barber-devo/slots" + query)).andExpect(
+            status().isBadRequest()
+        );
         verifyNoInteractions(providers, services, availabilities);
     }
 
     @Test
     void doesNotMakeOtherPublicPathsOrCrudPublic() throws Exception {
-        mvc.perform(get("/api/public/barber-devo/private")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/public/barber-devo/private")).andExpect(status().isNotFound());
         mvc.perform(get("/api/availabilities")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/services")).andExpect(status().isUnauthorized());
         verifyNoInteractions(providers, services, availabilities);
     }
 
     private void assertSlots(LocalDate date, String... expected) throws Exception {
-        String body = mvc.perform(get("/api/public/barber-devo/slots")
-                .param("serviceId", "1").param("date", date.toString()))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(objectMapper.readValue(body, LocalTime[].class))
-                .containsExactly(Arrays.stream(expected).map(LocalTime::parse).toArray(LocalTime[]::new));
+        String body = mvc
+            .perform(
+                get("/api/public/barber-devo/slots")
+                    .param("serviceId", "1")
+                    .param("date", date.toString())
+            )
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        assertThat(objectMapper.readValue(body, LocalTime[].class)).containsExactly(
+            Arrays.stream(expected)
+                .map(LocalTime::parse)
+                .toArray(LocalTime[]::new)
+        );
         assertThat(body).doesNotContain("devo@example.com", "private-hash", "provider");
     }
 

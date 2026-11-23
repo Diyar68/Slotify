@@ -1,17 +1,18 @@
 package dev.diyar68.slotify_backend.controller;
 
-import java.security.Principal;
-import java.util.List;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
 import dev.diyar68.slotify_backend.dto.request.AppointmentRequest;
 import dev.diyar68.slotify_backend.dto.response.AppointmentResponse;
 import dev.diyar68.slotify_backend.dto.response.ProviderAppointmentResponse;
 import dev.diyar68.slotify_backend.service.AppointmentService;
 import jakarta.validation.Valid;
+import java.security.Principal;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class AppointmentController {
+
     private final AppointmentService appointments;
 
     public AppointmentController(AppointmentService appointments) {
@@ -20,7 +21,10 @@ public class AppointmentController {
 
     @PostMapping("/api/public/{bookingSlug}/appointments")
     @ResponseStatus(HttpStatus.CREATED)
-    public AppointmentResponse book(@PathVariable String bookingSlug, @Valid @RequestBody AppointmentRequest request) {
+    public AppointmentResponse book(
+        @PathVariable String bookingSlug,
+        @Valid @RequestBody AppointmentRequest request
+    ) {
         return appointments.book(bookingSlug, request);
     }
 

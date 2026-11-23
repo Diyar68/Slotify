@@ -1,17 +1,15 @@
 package dev.diyar68.slotify_backend.entity;
 
-import java.time.LocalDateTime;
-import java.util.Locale;
-
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.Locale;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "providers")
@@ -41,9 +39,7 @@ public class Provider {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    protected Provider() {
-
-    }
+    protected Provider() {}
 
     public Provider(String name, String email, String passwordHash, String bookingSlug) {
         this.name = name;
@@ -99,5 +95,4 @@ public class Provider {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
-
 }

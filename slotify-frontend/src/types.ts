@@ -11,3 +11,12 @@ export type Appointment = {
   endTime: string;
   status: 'BOOKED' | 'CANCELLED';
 };
+
+export type PublicProvider = { name: string; services: ServiceOffering[] };
+export type BookingConfirmation = {
+  id: number;
+  serviceId: number;
+  startTime: string;
+  endTime: string;
+  status: 'BOOKED';
+};

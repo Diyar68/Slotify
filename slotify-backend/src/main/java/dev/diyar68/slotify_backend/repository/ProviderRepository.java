@@ -1,16 +1,14 @@
 package dev.diyar68.slotify_backend.repository;
 
+import dev.diyar68.slotify_backend.entity.Provider;
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import jakarta.persistence.LockModeType;
-
-import dev.diyar68.slotify_backend.entity.Provider;
 
 public interface ProviderRepository extends JpaRepository<Provider, Long> {
-
     Optional<Provider> findByEmail(String email);
 
     Optional<Provider> findByBookingSlug(String bookingSlug);

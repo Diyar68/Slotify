@@ -306,3 +306,14 @@ storage/
 
 *.bak
 *.orig
+
+# Local package/cloud credentials and SSH private keys
+.npmrc
+.aws/
+.ssh/
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+id_ecdsa_sk
+id_ed25519_sk
