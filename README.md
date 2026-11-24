@@ -22,7 +22,7 @@ Das Projekt wurde als Lern- und Portfolio-Projekt mit React und Spring Boot entw
 Öffne die Anwendung und melde dich über das Login-Formular an:
 
 - **E-Mail:** `demo@slotify.example`
-- **Passwort:** wird beim Betrieb über `SLOTIFY_DEMO_PASSWORD` festgelegt.
+- **Passwort:** wird beim Betrieb über `fahyqJfah293_fsaf` festgelegt.
 
 Ein öffentliches Demo-Passwort ist hier nicht hinterlegt. Für den Anbieterzugang
 benötigst du die vom Projektbetreiber bereitgestellten Zugangsdaten. Nach der
